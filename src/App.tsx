@@ -1,35 +1,41 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import BinanceW3WProvider from '@binance/w3w-ethereum-provider';
+import { useEffect, useState } from 'react'
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [provider,setProvider] = useState<BinanceW3WProvider | null>(null)
+  useEffect(()=>{
+    async function initProvider() {
+      const BinanceProvider = (await import('@binance/w3w-ethereum-provider')).default;
+      const walletProvider = new BinanceProvider({
+        chainId: 204,
+      })
+      setProvider(walletProvider)
+    }
+    initProvider().catch(console.error)
+  },[])
+
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <main>
+       <button onClick={async ()=>{
+        if(!provider) return;
+        if(provider.connected) {
+          await provider.disconnect();
+        }
+        const accounts = await provider.request({method: 'eth_requestAccounts',params:[]});
+        const address = accounts[0];
+        const hexMsg = `0x${stringToHex("Hello world")}`;
+        const signMessageRes =await provider.request({method:"personal_sign",params:[hexMsg,address]})
+        console.log('res',address,signMessageRes,provider)
+       }}>Login And Sign</button>
+    </main>
   )
 }
 
-export default App
+function stringToHex(str:string) {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(str);
+  return Array.from(bytes)
+    .map(byte => byte.toString(16).padStart(2, "0")) // 转换为两位的十六进制
+    .join("");
+}
